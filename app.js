@@ -1,21 +1,17 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, addDoc,
-  deleteDoc, query, orderBy, limit, serverTimestamp,
+    getFirestore, doc, setDoc, updateDoc, onSnapshot, collection, addDoc,
+    deleteDoc, query, orderBy, limit, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, ALLOWED_EMAIL } from "./firebase-config.js";
+import { firebaseConfig } from "./firebase-config.js";
 
 const COMPANIES = [
   { id: "mfi", name: "Miller Family Industries", short: "MFI", color: "var(--mfi)" },
   { id: "genesis", name: "Genesis Diagnostics", short: "Genesis", color: "var(--genesis)" },
   { id: "milar", name: "Milar Properties", short: "Milar", color: "var(--milar)" },
-];
+  ];
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
 
 // ---------- helpers ----------
@@ -40,81 +36,51 @@ const weekDayLabel = (d) => d.toLocaleDateString(undefined, { weekday: "short" }
 const el = (sel) => document.querySelector(sel);
 
 // ---------- state ----------
-let uid = null;
+const BASE = ["ledger", "mike"]; // fixed personal path, no auth, single user
 let entries = [];
 let tasks = [];
 let timerState = { running: false, startTs: null };
-let pendingStop = null; // { startTs, endTs, durationSec, dateLabel, manualDate }
+let pendingStop = null;
 let taskWeekOffset = 0;
 let payPeriodOffset = 0;
-let payPeriodAnchor = getMonday(new Date()); // overwritten once meta loads
+let payPeriodAnchor = getMonday(new Date());
 let tickInterval = null;
 let unsubEntries = null, unsubTasks = null, unsubMeta = null;
 
-// ---------- auth ----------
-el("#sign-in-btn").addEventListener("click", async () => {
-  const provider = new GoogleAuthProvider();
-  try { await signInWithPopup(auth, provider); }
-  catch (e) { alert("Sign-in failed: " + e.message); }
-});
-el("#sign-out-btn").addEventListener("click", () => signOut(auth));
-
-onAuthStateChanged(auth, async (user) => {
-  if (user && user.email !== ALLOWED_EMAIL) {
-    alert("This ledger is private. Signing you out.");
-    await signOut(auth);
-    return;
-  }
-  if (user) {
-    uid = user.uid;
-    el("#user-email").textContent = user.email;
-    el("#signed-out").classList.add("hidden");
-    el("#app").classList.remove("hidden");
-    attachListeners();
-  } else {
-    uid = null;
-    detachListeners();
-    el("#app").classList.add("hidden");
-    el("#signed-out").classList.remove("hidden");
-  }
-});
+// ---------- data ----------
+attachListeners();
 
 function attachListeners() {
-  const entriesQ = query(collection(db, "users", uid, "entries"), orderBy("startTs", "desc"), limit(60));
+  const entriesQ = query(collection(db, ...BASE, "entries"), orderBy("startTs", "desc"), limit(60));
   unsubEntries = onSnapshot(entriesQ, (snap) => {
     entries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderPeriod(); renderEntries(); renderTodayTotal();
   });
 
-  unsubTasks = onSnapshot(collection(db, "users", uid, "tasks"), (snap) => {
-    tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    renderTasks();
-  });
+unsubTasks = onSnapshot(collection(db, ...BASE, "tasks"), (snap) => {
+  tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderTasks();
+});
 
-  unsubMeta = onSnapshot(doc(db, "users", uid, "meta", "state"), (snap) => {
-    const data = snap.data() || {};
-    timerState = data.timer || { running: false, startTs: null };
-    pendingStop = data.pendingStop || null;
-    payPeriodAnchor = data.payPeriodAnchor ? new Date(data.payPeriodAnchor + "T00:00:00") : getMonday(new Date());
-    renderClockState();
-    renderAlloc();
-    renderPeriod();
-  });
-}
-
-function detachListeners() {
-  unsubEntries?.(); unsubTasks?.(); unsubMeta?.();
-  clearInterval(tickInterval);
+unsubMeta = onSnapshot(doc(db, ...BASE, "meta", "state"), (snap) => {
+  const data = snap.data() || {};
+  timerState = data.timer || { running: false, startTs: null };
+  pendingStop = data.pendingStop || null;
+  payPeriodAnchor = data.payPeriodAnchor ? new Date(data.payPeriodAnchor + "T00:00:00") : getMonday(new Date());
+  renderClockState();
+  renderAlloc();
+  renderPeriod();
+});
 }
 
 async function saveMeta(patch) {
-  await setDoc(doc(db, "users", uid, "meta", "state"), patch, { merge: true });
+  await setDoc(doc(db, ...BASE, "meta", "state"), patch, { merge: true });
 }
 
 // ---------- company chips ----------
 el("#company-chips").innerHTML = COMPANIES.map(
   (c) => `<span class="chip" style="color:${c.color}">${c.short}</span>`
-).join("");
+  ).join("");
 
 // ---------- clock ----------
 function renderClockState() {
@@ -123,14 +89,14 @@ function renderClockState() {
   if (timerState.running && timerState.startTs) {
     el("#clock-state").textContent = "Clocked in";
     btn.classList.add("running");
-    el("#clock-btn-icon").textContent = "■";
+    el("#clock-btn-icon").textContent = "\u25a0";
     el("#clock-btn-label").textContent = "Stop";
     tickInterval = setInterval(tickClock, 1000);
     tickClock();
   } else {
     el("#clock-state").textContent = "Clocked out";
     btn.classList.remove("running");
-    el("#clock-btn-icon").textContent = "▶";
+    el("#clock-btn-icon").textContent = "\u25b6";
     el("#clock-btn-label").textContent = "Start";
     el("#clock-digits").textContent = "00:00:00";
   }
@@ -186,27 +152,27 @@ function renderAlloc() {
   if (!pendingStop) { panel.classList.add("hidden"); return; }
   panel.classList.remove("hidden");
   el("#manual-form").classList.add("hidden");
-  el("#alloc-title").textContent = `Allocate session${pendingStop.dateLabel ? " · " + pendingStop.dateLabel : ""}`;
+  el("#alloc-title").textContent = `Allocate session${pendingStop.dateLabel ? " \u00b7 " + pendingStop.dateLabel : ""}`;
 
-  const totalHours = hoursFromSec(pendingStop.durationSec);
+const totalHours = hoursFromSec(pendingStop.durationSec);
   el("#alloc-total").textContent = `${fmtH(totalHours)}h`;
 
-  if (!allocSplits._for || allocSplits._for !== pendingStop.startTs + "-" + pendingStop.durationSec) {
-    allocSplits = { _for: pendingStop.startTs + "-" + pendingStop.durationSec };
-    COMPANIES.forEach((c) => (allocSplits[c.id] = 0));
-  }
+if (!allocSplits._for || allocSplits._for !== pendingStop.startTs + "-" + pendingStop.durationSec) {
+  allocSplits = { _for: pendingStop.startTs + "-" + pendingStop.durationSec };
+  COMPANIES.forEach((c) => (allocSplits[c.id] = 0));
+}
 
-  const rows = el("#alloc-rows");
+const rows = el("#alloc-rows");
   rows.innerHTML = "";
   COMPANIES.forEach((c) => {
     const row = document.createElement("div");
     row.className = "alloc-row";
     row.innerHTML = `
-      <span class="dot" style="background:${c.color}"></span>
-      <span class="name">${c.name}</span>
-      <input type="number" step="0.25" min="0" value="${allocSplits[c.id]}" data-co="${c.id}" />
-      <span class="unit">h</span>
-      <button class="assign-btn" style="background:${c.color}" data-assign="${c.id}">all</button>
+    <span class="dot" style="background:${c.color}"></span>
+    <span class="name">${c.name}</span>
+    <input type="number" step="0.25" min="0" value="${allocSplits[c.id]}" data-co="${c.id}" />
+    <span class="unit">h</span>
+    <button class="assign-btn" style="background:${c.color}" data-assign="${c.id}">all</button>
     `;
     rows.appendChild(row);
   });
@@ -220,7 +186,7 @@ function renderAlloc() {
     });
   });
 
-  renderAllocBarAndStatus(totalHours);
+renderAllocBarAndStatus(totalHours);
 }
 
 function renderAllocBarAndStatus(totalHours) {
@@ -231,7 +197,7 @@ function renderAllocBarAndStatus(totalHours) {
     return `<span style="width:${pct}%;background:${c.color}"></span>`;
   }).join("");
 
-  const assigned = COMPANIES.reduce((s, c) => s + (parseFloat(allocSplits[c.id]) || 0), 0);
+const assigned = COMPANIES.reduce((s, c) => s + (parseFloat(allocSplits[c.id]) || 0), 0);
   const remaining = Math.round((totalHours - assigned) * 100) / 100;
   const status = el("#alloc-status");
   const balanced = Math.abs(remaining) < 0.02;
@@ -245,7 +211,7 @@ el("#alloc-split-even").addEventListener("click", () => {
   const each = Math.round((totalHours / COMPANIES.length) * 100) / 100;
   COMPANIES.forEach((c, i) => {
     allocSplits[c.id] = i === COMPANIES.length - 1
-      ? Math.round((totalHours - each * (COMPANIES.length - 1)) * 100) / 100 : each;
+    ? Math.round((totalHours - each * (COMPANIES.length - 1)) * 100) / 100 : each;
   });
   renderAlloc();
 });
@@ -260,7 +226,7 @@ el("#alloc-discard").addEventListener("click", discardPending);
 el("#alloc-save").addEventListener("click", async () => {
   const note = el("#alloc-note").value.trim();
   const entryDate = pendingStop.manualDate || dateKey(new Date(pendingStop.startTs));
-  await addDoc(collection(db, "users", uid, "entries"), {
+  await addDoc(collection(db, ...BASE, "entries"), {
     date: entryDate,
     startTs: pendingStop.startTs || null,
     endTs: pendingStop.endTs || null,
@@ -319,8 +285,8 @@ function renderDayBars(containerSel, days, maxDay) {
       return `<div style="height:${segPct}%;background:${c.color}"></div>`;
     }).join("");
     return `<div class="day-col">
-      <div class="day-col-fill" style="height:${Math.max(heightPct, dayTotal > 0 ? 4 : 0)}%">${segs}</div>
-      <div class="day-col-label">${weekDayLabel(d.date)}</div>
+    <div class="day-col-fill" style="height:${Math.max(heightPct, dayTotal > 0 ? 4 : 0)}%">${segs}</div>
+    <div class="day-col-label">${weekDayLabel(d.date)}</div>
     </div>`;
   }).join("");
 }
@@ -330,21 +296,22 @@ function renderPeriod() {
   const days14 = Array.from({ length: 14 }, (_, i) => dayTotals(addDays(periodStart, i)));
   const week1 = days14.slice(0, 7), week2 = days14.slice(7, 14);
 
-  el("#period-label").textContent = `Pay period: ${shortDate(days14[0].date)} – ${shortDate(days14[13].date)}`;
-  el("#period-week1-label").textContent = `Week 1 · ${shortDate(week1[0].date)} – ${shortDate(week1[6].date)}`;
-  el("#period-week2-label").textContent = `Week 2 · ${shortDate(week2[0].date)} – ${shortDate(week2[6].date)}`;
+el("#period-label").textContent = `Pay period: ${shortDate(days14[0].date)} \u2013 ${shortDate(days14[13].date)}`;
+  el("#period-week1-label").textContent = `Week 1 \u00b7 ${shortDate(week1[0].date)} \u2013 ${shortDate(week1[6].date)}`;
+  el("#period-week2-label").textContent = `Week 2 \u00b7 ${shortDate(week2[0].date)} \u2013 ${shortDate(week2[6].date)}`;
 
-  const maxDay = Math.max(0.25, ...days14.map((d) => COMPANIES.reduce((s, c) => s + d.totals[c.id], 0)));
+const maxDay = Math.max(0.25, ...days14.map((d) => COMPANIES.reduce((s, c) => s + d.totals[c.id], 0)));
   renderDayBars("#day-bars-week1", week1, maxDay);
   renderDayBars("#day-bars-week2", week2, maxDay);
 
-  const grand = {}; COMPANIES.forEach((c) => (grand[c.id] = days14.reduce((s, d) => s + d.totals[c.id], 0)));
+const grand = {}; COMPANIES.forEach((c) => (grand[c.id] = days14.reduce((s, d) => s + d.totals[c.id], 0)));
   const grandTotal = COMPANIES.reduce((s, c) => s + grand[c.id], 0);
   el("#period-totals").innerHTML = COMPANIES.map((c) =>
     `<div class="wt-item"><span class="dot" style="background:${c.color}"></span>${c.short}
-     <span class="wt-hours">${fmtH(grand[c.id])}h</span></div>`
-  ).join("") + `<div class="wt-grand">Total ${fmtH(grandTotal)}h</div>`;
+    <span class="wt-hours">${fmtH(grand[c.id])}h</span></div>`
+                                                 ).join("") + `<div class="wt-grand">Total ${fmtH(grandTotal)}h</div>`;
 }
+
 
 // ---------- weekly tasks nav ----------
 el("#task-week-prev").addEventListener("click", () => { taskWeekOffset--; renderTasks(); });
@@ -353,7 +320,7 @@ el("#task-week-next").addEventListener("click", () => { taskWeekOffset++; render
 function currentMonday() { return getMonday(addDays(new Date(), taskWeekOffset * 7)); }
 
 // ---------- tasks ----------
-el("#new-task-company").innerHTML = `<option value="">—</option>` +
+el("#new-task-company").innerHTML = `<option value="">\u2014</option>` +
   COMPANIES.map((c) => `<option value="${c.id}">${c.short}</option>`).join("");
 
 el("#add-task-btn").addEventListener("click", addTask);
@@ -363,7 +330,7 @@ async function addTask() {
   const text = el("#new-task-text").value.trim();
   if (!text) return;
   const company = el("#new-task-company").value || null;
-  await addDoc(collection(db, "users", uid, "tasks"), {
+  await addDoc(collection(db, ...BASE, "tasks"), {
     text, done: false, company, weekStart: dateKey(currentMonday()), createdAt: serverTimestamp(),
   });
   el("#new-task-text").value = ""; el("#new-task-company").value = "";
@@ -371,7 +338,7 @@ async function addTask() {
 
 function renderTasks() {
   const monday = currentMonday();
-  el("#task-week-label").textContent = `Tasks for week of ${shortDate(monday)} – ${shortDate(addDays(monday, 6))}`;
+  el("#task-week-label").textContent = `Tasks for week of ${shortDate(monday)} \u2013 ${shortDate(addDays(monday, 6))}`;
   const weekStartKey = dateKey(monday);
   const weekTasks = tasks.filter((t) => t.weekStart === weekStartKey);
   const listEl = el("#task-list");
@@ -382,10 +349,10 @@ function renderTasks() {
   listEl.innerHTML = weekTasks.map((t) => {
     const co = COMPANIES.find((c) => c.id === t.company);
     return `<div class="task-row">
-      <button class="task-check ${t.done ? "done" : ""}" data-toggle="${t.id}"></button>
-      <span class="task-text ${t.done ? "done" : ""}">${escapeHtml(t.text)}</span>
-      ${co ? `<span class="task-co-chip" style="background:${co.color}">${co.short}</span>` : ""}
-      <button class="icon-btn" data-del="${t.id}" style="font-size:14px">✕</button>
+    <button class="task-check ${t.done ? "done" : ""}" data-toggle="${t.id}"></button>
+    <span class="task-text ${t.done ? "done" : ""}">${escapeHtml(t.text)}</span>
+    ${co ? `<span class="task-co-chip" style="background:${co.color}">${co.short}</span>` : ""}
+    <button class="icon-btn" data-del="${t.id}" style="font-size:14px">\u2715</button>
     </div>`;
   }).join("");
   listEl.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", () => toggleTask(b.dataset.toggle)));
@@ -394,9 +361,9 @@ function renderTasks() {
 
 async function toggleTask(id) {
   const t = tasks.find((x) => x.id === id);
-  await updateDoc(doc(db, "users", uid, "tasks", id), { done: !t.done });
+  await updateDoc(doc(db, ...BASE, "tasks", id), { done: !t.done });
 }
-async function deleteTask(id) { await deleteDoc(doc(db, "users", uid, "tasks", id)); }
+async function deleteTask(id) { await deleteDoc(doc(db, ...BASE, "tasks", id)); }
 
 // ---------- entries ----------
 function renderEntries() {
@@ -417,25 +384,24 @@ function renderEntries() {
       return h > 0 ? `<span style="color:${c.color}">${c.short}</span> ${fmtH(h)}h` : "";
     }).filter(Boolean).join(" &nbsp; ");
     return `<div class="entry-row">
-      <div class="entry-date">${e.date}</div>
-      <div class="entry-mid">
-        <div class="entry-bar">${bar}</div>
-        <div class="entry-detail">${detail}${e.note ? ` &nbsp; <em>"${escapeHtml(e.note)}"</em>` : ""}</div>
-      </div>
-      <div class="entry-hours">${fmtH(total)}h</div>
-      <button class="icon-btn" data-entrydel="${e.id}">✕</button>
+    <div class="entry-date">${e.date}</div>
+    <div class="entry-mid">
+    <div class="entry-bar">${bar}</div>
+    <div class="entry-detail">${detail}${e.note ? ` &nbsp; <em>"${escapeHtml(e.note)}"</em>` : ""}</div>
+    </div>
+    <div class="entry-hours">${fmtH(total)}h</div>
+    <button class="icon-btn" data-entrydel="${e.id}">\u2715</button>
     </div>`;
   }).join("");
   listEl.querySelectorAll("[data-entrydel]").forEach((b) => b.addEventListener("click", () => deleteEntry(b.dataset.entrydel)));
 }
 
-async function deleteEntry(id) { await deleteDoc(doc(db, "users", uid, "entries", id)); }
+async function deleteEntry(id) { await deleteDoc(doc(db, ...BASE, "entries", id)); }
 
 function escapeHtml(s) {
   const d = document.createElement("div"); d.textContent = s; return d.innerHTML;
 }
 
-// register service worker for installability
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 }
