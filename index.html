@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Time Ledger</title>
+<meta name="theme-color" content="#12131c" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏱️</text></svg>" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div class="bg-mesh" aria-hidden="true"></div>
+
+<div id="app" class="app">
+  <div class="wrap">
+
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Time Ledger</div>
+        <div class="chips" id="company-chips"></div>
+      </div>
+    </header>
+
+    <!-- Punch clock -->
+    <section class="glass card clock-card">
+      <div class="clock-row">
+        <div>
+          <div class="label" id="clock-state">Clocked out</div>
+          <div class="clock-digits" id="clock-digits">00:00:00</div>
+        </div>
+        <button id="clock-btn" class="btn btn-clock">
+          <span id="clock-btn-icon">▶</span>
+          <span id="clock-btn-label">Start</span>
+        </button>
+      </div>
+      <div class="today-total" id="today-total">Today: 0h across 0 sessions</div>
+      <button id="manual-toggle" class="link-btn">+ add time manually</button>
+    </section>
+
+    <!-- Manual entry -->
+    <section id="manual-form" class="glass card hidden">
+      <div class="card-head">
+        <span class="label">Add entry manually</span>
+        <button class="icon-btn" id="manual-cancel">✕</button>
+      </div>
+      <div class="row">
+        <label class="field">
+          <span>Date</span>
+          <input type="date" id="manual-date" />
+        </label>
+        <label class="field field-narrow">
+          <span>Total hours</span>
+          <input type="number" step="0.25" min="0" id="manual-hours" value="1" />
+        </label>
+      </div>
+      <button id="manual-continue" class="btn btn-primary btn-block">Continue to allocate</button>
+    </section>
+
+    <!-- Allocation panel -->
+    <section id="alloc-panel" class="glass card hidden">
+      <div class="card-head">
+        <span class="label" id="alloc-title">Allocate session</span>
+        <button class="icon-btn" id="alloc-cancel">✕</button>
+      </div>
+      <div class="alloc-total" id="alloc-total">0h</div>
+      <div class="bar" id="alloc-bar"></div>
+      <div id="alloc-rows"></div>
+      <div class="alloc-footer">
+        <button class="link-btn" id="alloc-split-even">split evenly</button>
+        <span id="alloc-status" class="status-ok">balanced</span>
+      </div>
+      <input type="text" id="alloc-note" class="text-input" placeholder="Note (optional)" />
+      <div class="row">
+        <button class="btn btn-ghost btn-block" id="alloc-discard">Discard</button>
+        <button class="btn btn-primary btn-block" id="alloc-save">Save entry</button>
+      </div>
+    </section>
+
+    <!-- Pay period summary (2 weeks) -->
+    <section class="glass card">
+      <div class="week-nav">
+        <button class="icon-btn" id="period-prev">‹</button>
+        <div>
+          <div class="week-label" id="period-label">Pay period —</div>
+          <button class="link-btn period-anchor-link" id="period-anchor-toggle">change period start</button>
+        </div>
+        <button class="icon-btn" id="period-next">›</button>
+      </div>
+      <div id="period-anchor-row" class="row hidden" style="margin-bottom:12px">
+        <label class="field">
+          <span>Any date in period 1 (e.g. your last payday's period start)</span>
+          <input type="date" id="period-anchor-input" />
+        </label>
+        <button class="btn btn-primary btn-sm" id="period-anchor-save" style="align-self:flex-end">Save</button>
+      </div>
+      <div class="period-week">
+        <div class="period-week-label" id="period-week1-label">Week 1</div>
+        <div class="day-bars day-bars-compact" id="day-bars-week1"></div>
+      </div>
+      <div class="period-week">
+        <div class="period-week-label" id="period-week2-label">Week 2</div>
+        <div class="day-bars day-bars-compact" id="day-bars-week2"></div>
+      </div>
+      <div class="week-totals" id="period-totals"></div>
+    </section>
+
+    <!-- Weekly tasks -->
+    <section class="glass card">
+      <div class="week-nav">
+        <button class="icon-btn" id="task-week-prev">‹</button>
+        <div class="week-label" id="task-week-label">Tasks for week of —</div>
+        <button class="icon-btn" id="task-week-next">›</button>
+      </div>
+      <div id="task-list" class="task-list"></div>
+      <div class="row task-add-row">
+        <input type="text" id="new-task-text" class="text-input" placeholder="New task…" />
+        <select id="new-task-company" class="select-input"></select>
+        <button id="add-task-btn" class="btn btn-primary btn-sm">+</button>
+      </div>
+    </section>
+
+    <!-- Recent entries -->
+    <section class="glass card">
+      <div class="label">Recent entries</div>
+      <div id="entries-list" class="entries-list"></div>
+    </section>
+
+    <div class="footnote">Syncs live across devices</div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
