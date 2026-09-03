@@ -1,16 +1,16 @@
 {
-    "name": "Time Ledger",
-    "short_name": "Time Ledger",
-    "description": "Track hours across MFI, Genesis Diagnostics, and Milar Properties",
-    "start_url": "./index.html",
-    "display": "standalone",
-    "background_color": "#0a0b0f",
-    "theme_color": "#0a0b0f",
-    "icons": [
-          {
-                  "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230a0b0f'/%3E%3Ctext x='50' y='68' font-size='55' text-anchor='middle'%3E⏱️%3C/text%3E%3C/svg%3E",
-                  "sizes": "192x192",
-                  "type": "image/svg+xml"
-          }
-    ]
+  "name": "Time Ledger",
+  "short_name": "Time Ledger",
+  "description": "Track hours across MFI, Genesis Diagnostics, and Milar Properties",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#12131c",
+  "theme_color": "#12131c",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%2312131c'/%3E%3Ctext x='50' y='68' font-size='55' text-anchor='middle'%3E⏱️%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
 }

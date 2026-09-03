@@ -1,17 +1,13 @@
 // Paste the config object from Firebase Console → Project settings → Your apps → SDK setup.
 // This file is safe to commit — these values are public identifiers, not secrets.
-// Access control is enforced by Firestore security rules (see README.md), not by hiding this file.
+// There's no login gate anymore (personal single-user app), so the real protection
+// is keeping this URL and Firebase project unlisted — see README.md for the trade-off.
 
 export const firebaseConfig = {
-    apiKey: "PASTE_ME",
-    authDomain: "PASTE_ME.firebaseapp.com",
-    projectId: "PASTE_ME",
-    storageBucket: "PASTE_ME.appspot.com",
-    messagingSenderId: "PASTE_ME",
-    appId: "PASTE_ME",
+  apiKey: "AIzaSyBiDTyLynYqr2JKFfQgYlY9G2G9ygxjfQI",
+  authDomain: "clock-in-a1e66.firebaseapp.com",
+  projectId: "clock-in-a1e66",
+  storageBucket: "clock-in-a1e66.firebasestorage.app",
+  messagingSenderId: "624997459598",
+  appId: "1:624997459598:web:5357230f783fa1ca5ccbdf",
 };
-
-// The Google account allowed to sign in. Anyone else who signs in will be
-// signed back out immediately — this is a second lock on top of the
-// Firestore rules, not a replacement for them.
-export const ALLOWED_EMAIL = "msloskey@gmail.com"; // <-- change if needed
